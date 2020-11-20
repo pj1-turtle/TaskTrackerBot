@@ -46,7 +46,7 @@ async def addTask(ctx, role_mention=None) -> None:
 
     role_id = ''
     if role_mention != None:
-        role = get_role_from_mention(role_mention)
+        role = get_role_from_mention(role_mention, ctx.guild.roles)
         if role == None:
             await ctx.send("Sorry, there doesn't seem to be a role with this name")
             return
@@ -99,7 +99,7 @@ async def getTasks(ctx, role_mention=None) -> None:
     await displayTasks(ctx=ctx, mapped_tasks=mapped_tasks)
 
 @bot.command()
-async def markComplete(ctx):
+async def markComplete(ctx, role_mention=None):
     def check(message: discord.Message) -> bool:
         if message.author != ctx.author:
             return False
@@ -109,11 +109,26 @@ async def markComplete(ctx):
             return False
         
         return True
+    
+    role: discord.Role = None
+    if role_mention != None:
+        role = get_role_from_mention(role_mention, ctx.guild.roles)
+        if role == None:
+            await ctx.send("Sorry, there doesn't seem to be a role with this name")
+            return
+        elif role not in ctx.author.roles:
+            await ctx.send('Sorry, you are not authorized to make this command')
+            return
 
-    query = tasks.select().where(tasks.c.guild_id == ctx.guild.id)
+    await ctx.send("Getting tasks...")
+    query = tasks.select().where(tasks.c.guild_id == '').where(tasks.c.role_id == '')
     values = {
-        'guild_id_1': str(ctx.guild.id)
+        'guild_id_1': str(ctx.guild.id),
+        'role_id_1': ''
     }
+    if role != None:
+        values['role_id_1'] = str(role.id)
+
     mapped_tasks = await db_service.get_mapped_tasks(query=str(query), values=values)
     no_tasks: bool = await displayTasks(ctx=ctx, mapped_tasks=mapped_tasks)
     if no_tasks:
