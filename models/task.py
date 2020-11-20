@@ -16,6 +16,9 @@ class TaskOut:
         self.guild_id = guild_id
         self.role_id = role_id
     
+    def get_attribute(self, attribute: str):
+        return getattr(self, attribute)
+    
     def to_dict(self) -> dict:
         return {
             "task_id": int(self.task_id),
@@ -42,6 +45,9 @@ class TaskIn:
         self.date_assigned = date_assigned
         self.guild_id = guild_id
         self.role_id = role_id
+    
+    def get_attribute(self, attribute: str):
+        return getattr(self, attribute)
     
     def to_dict(self) -> dict:
         return {

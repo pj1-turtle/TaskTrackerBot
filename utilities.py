@@ -24,17 +24,11 @@ def remove_all(string: str, substrings: List[str]) -> str:
 
 def get_role_from_mention(role_mention: str, roles: List[discord.Role]) -> discord.Role:
     role_id = remove_all(role_mention, ['<', '>', '!', '@', '&'])
-    return get_role_from_id(role_id, roles)
+    return get_role_by_attribute('id', role_id, roles)
 
-def get_role_from_id(role_id: str, roles: List[discord.Role]) -> discord.Role:
+def get_role_by_attribute(attribute_name, role_attribute, roles: List[discord.Role]) -> discord.Role:
     for role in roles:
-        if str(role.id) == role_id:
-            return role
-    return None
-
-def get_role_by_name(role_name: str, roles: List[discord.Role]) -> discord.Role:
-    for role in roles:
-        if str(role.name) == role_name:
+        if str(getattr(role, attribute_name)) == role_attribute:
             return role
     return None
 

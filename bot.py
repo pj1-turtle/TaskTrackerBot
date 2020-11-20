@@ -1,5 +1,5 @@
 import db_service
-from utilities import get_role_by_name, get_role_from_mention, remove_all, sort_dict_by_value, sum_dict_values, displayTasks, create_task_embed
+from utilities import get_role_by_attribute, remove_all, sort_dict_by_value, sum_dict_values, displayTasks, create_task_embed
 from models.task import TaskIn, TaskOut
 from schemas import tasks
 from typing import List
@@ -17,7 +17,7 @@ if DEBUG:
 bot = commands.Bot(command_prefix='-')
 
 @bot.command()
-async def addTask(ctx, role_mention=None) -> None:
+async def addTask(ctx, role_name=None) -> None:
     def check(message: discord.Message) -> bool:
         if ctx.author != message.author:
             return False
@@ -45,10 +45,12 @@ async def addTask(ctx, role_mention=None) -> None:
     deadline: str = str(deadline_message.content)
 
     role_id = ''
-    if role_mention != None:
-        role = get_role_from_mention(role_mention, ctx.guild.roles)
+    if role_name != None:
+        role = get_role_by_attribute('name', role_name, ctx.guild.roles)
         if role == None:
-            await ctx.send("Sorry, there doesn't seem to be a role with this name")
+            await ctx.send(
+                """Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"""
+            )
             return
         elif role not in ctx.author.roles:
             await ctx.send('Sorry, you are not authorized to make this command')
@@ -75,12 +77,14 @@ async def addTask(ctx, role_mention=None) -> None:
     await ctx.send('Added task to database!')
 
 @bot.command()
-async def getTasks(ctx, role_mention=None) -> None:
+async def getTasks(ctx, role_name=None) -> None:
     role: discord.Role = None
-    if role_mention != None:
-        role = get_role_from_mention(role_mention, ctx.guild.roles)
+    if role_name != None:
+        role = get_role_by_attribute('name', role_name, ctx.guild.roles)
         if role == None:
-            await ctx.send("Sorry, there doesn't seem to be a role with this name")
+            await ctx.send(
+                """Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"""
+            )
             return
         elif role not in ctx.author.roles:
             await ctx.send('Sorry, you are not authorized to make this command')
@@ -99,7 +103,7 @@ async def getTasks(ctx, role_mention=None) -> None:
     await displayTasks(ctx=ctx, mapped_tasks=mapped_tasks)
 
 @bot.command()
-async def markComplete(ctx, role_mention=None):
+async def markComplete(ctx, role_name=None):
     def check(message: discord.Message) -> bool:
         if message.author != ctx.author:
             return False
@@ -111,10 +115,12 @@ async def markComplete(ctx, role_mention=None):
         return True
     
     role: discord.Role = None
-    if role_mention != None:
-        role = get_role_from_mention(role_mention, ctx.guild.roles)
+    if role_name != None:
+        role = get_role_by_attribute('name', role_name, ctx.guild.roles)
         if role == None:
-            await ctx.send("Sorry, there doesn't seem to be a role with this name")
+            await ctx.send(
+                """Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"""
+            )
             return
         elif role not in ctx.author.roles:
             await ctx.send('Sorry, you are not authorized to make this command')
@@ -193,7 +199,7 @@ async def countMessage(ctx, messages=None) -> None:
 
 
 @bot.command()
-async def changeStatusTo(ctx, new_status: str) -> None:
+async def setStatus(ctx, new_status: str) -> None:
     possible_statuses = ['dnd', 'online', 'idle', 'invisible']
     if new_status in possible_statuses:
         await bot.change_presence(status=new_status)
@@ -203,26 +209,25 @@ async def changeStatusTo(ctx, new_status: str) -> None:
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
-    # await bot.change_presence(status=discord.Status.do_not_disturb)
 
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
     if before.channel == None and after.channel != None:
         guild: discord.Guild = after.channel.guild
-        role = get_role_by_name(role_name=after.channel.name, roles=guild.roles)
+        role = get_role_by_attribute('name', after.channel.name, roles=guild.roles)
         if role == None:
             role = await guild.create_role(name=after.channel.name)
         
         await member.add_roles(role)
     elif before.channel != None and after.channel == None:
         guild: discord.Guild = before.channel.guild
-        role = get_role_by_name(role_name=before.channel.name, roles=guild.roles)
+        role = get_role_by_attribute('name', before.channel.name, roles=guild.roles)
         await member.remove_roles(role)
 
     elif before.channel != None and after.channel != None and before.channel != after.channel:
         guild: discord.Guild = before.channel.guild
-        before_role = get_role_by_name(role_name=before.channel.name, roles=guild.roles)
-        after_role = get_role_by_name(role_name=after.channel.name, roles=guild.roles)
+        before_role = get_role_by_attribute('name', before.channel.name, roles=guild.roles)
+        after_role = get_role_by_attribute('name', after.channel.name, roles=guild.roles)
         if before_role == None:
             before_role = await guild.create_role(name=before.channel.name)
         if after_role == None:
