@@ -1,5 +1,5 @@
 import db_service
-from utilities import get_role_by_name, get_role_from_mention, remove_all, sum_dict_values, displayTasks, create_task_embed
+from utilities import get_role_by_name, get_role_from_mention, remove_all, sort_dict_by_value, sum_dict_values, displayTasks, create_task_embed
 from models.task import TaskIn, TaskOut
 from schemas import tasks
 from typing import List
@@ -152,6 +152,7 @@ async def countMessage(ctx, messages=None) -> None:
     channel: discord.TextChannel = bot.get_channel(int(channel_id))
 
     async for message in channel.history(limit=None):
+        print(message.content, message.author)
         if messages_to_count != []:
             if message.content.lower() in [string.lower() for string in messages_to_count]:
                 if str(message.author.name) in counts.keys():
@@ -164,7 +165,7 @@ async def countMessage(ctx, messages=None) -> None:
             else:
                 counts[str(message.author.name)] = 1
 
-    
+    counts = sort_dict_by_value(counts)
     await ctx.send(f'Total: {sum_dict_values(counts)}')
     for member_name in counts.keys():
         await ctx.send(f'{member_name}: {counts.get(member_name)}')

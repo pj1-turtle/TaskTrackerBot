@@ -69,6 +69,21 @@ def sum_dict_values(dictionary: Dict[str, int]) -> int:
         total += value
     return total
 
+def sort_dict_by_value(dictionary: dict) -> dict:
+    sorted_dict = {}
+    sorted_values = list(dictionary.values())
+    sorted_values.sort(reverse=True)
+    dictionary_keys = list(dictionary.keys())
+
+    for i in range(0, len(sorted_values)):
+        for key in dictionary_keys:
+            if dictionary.get(key) == sorted_values[i]:
+                sorted_dict[key] = sorted_values[i]
+    return sorted_dict
+
+
+    
+    
 
 
 
