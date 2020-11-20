@@ -166,9 +166,15 @@ async def countMessage(ctx, messages=None) -> None:
                 counts[str(message.author.name)] = 1
 
     counts = sort_dict_by_value(counts)
-    await ctx.send(f'Total: {sum_dict_values(counts)}')
+    message_count_embed = discord.Embed(
+        type='rich',
+        title='Message Count'
+    )
+    message_count_embed.description = f'Total: {sum_dict_values(counts)}\n'
     for member_name in counts.keys():
-        await ctx.send(f'{member_name}: {counts.get(member_name)}')
+        message_count_embed.description += f'{member_name}: {counts.get(member_name)}\n'
+    
+    await ctx.send(embed=message_count_embed)
 
 
 @bot.command()
