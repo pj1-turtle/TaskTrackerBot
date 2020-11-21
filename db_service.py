@@ -31,9 +31,9 @@ async def delete_one_task(task: TaskOut) -> None:
 
 async def get_mapped_tasks(query: str, values=None) -> List[TaskOut]:
     await db.connect()
-    mapped_assignments: List[TaskOut] = []
+    mapped_tasks: List[TaskOut] = []
     async for row in db.iterate(query=query, values=values):
-        mapped_assignments.append(TaskOut(
+        mapped_tasks.append(TaskOut(
             task_id=row[0],
             title=row[1],
             content=row[2],
@@ -43,7 +43,7 @@ async def get_mapped_tasks(query: str, values=None) -> List[TaskOut]:
             role_id=row[6]
         ))
     await db.disconnect()
-    return mapped_assignments
+    return mapped_tasks
 
 async def insert_one_task(task: TaskIn) -> None:
     query = tasks.insert()

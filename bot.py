@@ -1,8 +1,7 @@
 import db_service
-from utilities import get_role_by_attribute, remove_all, sort_dict_by_value, sum_dict_values, displayTasks, create_task_embed
-from models.task import TaskIn, TaskOut
+from utilities.general_utilities import remove_all, sort_dict_by_value
+from utilities.bot_utilities import create_task_embed, get_and_add_task, get_task_from_user, input_role_from_user, post_to_secret_server, get_role_by_attribute, get_role_from_mention, show_task_completion_screen, show_tasks_screen
 from schemas import tasks
-from typing import List
 import os
 from datetime import date
 
@@ -17,143 +16,59 @@ if DEBUG:
 bot = commands.Bot(command_prefix='-')
 
 @bot.command()
-async def addTask(ctx, role_name=None) -> None:
-    def check(message: discord.Message) -> bool:
-        if ctx.author != message.author:
-            return False
-        return True
-    
-    def deadline_check(message: discord.Message) -> bool:
-        if '/' not in message.content:
-            return False
+async def addTask(ctx) -> None:
+    await get_and_add_task(ctx, bot)
 
-        date_information = message.content.split('/')
-        if len(date_information) != 3:
-            return False
-        return True
-    
-    await ctx.send('Enter the task title')
-    title_message: discord.Message = await bot.wait_for('message', check=check)
-    title: str = str(title_message.content)
-
-    await ctx.send('Enter the content of the task')
-    content_message: discord.Message = await bot.wait_for('message', check=check)
-    task_content: str = str(content_message.content)
-
-    await ctx.send('What is the deadline? Please provide in the format DD/MM/YY')
-    deadline_message: discord.Message = await bot.wait_for('message', check=deadline_check)
-    deadline: str = str(deadline_message.content)
-
-    role_id = ''
-    if role_name != None:
-        role = get_role_by_attribute('name', role_name, ctx.guild.roles)
-        if role == None:
-            await ctx.send(
-                """Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"""
-            )
-            return
-        elif role not in ctx.author.roles:
-            await ctx.send('Sorry, you are not authorized to make this command')
-            return
-        role_id = str(role.id)
-
-    secret_guild_id = str(os.getenv('SECRET_GUILD_ID'))
-
-    if secret_guild_id == str(ctx.guild.id):
-        for channel in ctx.guild.channels:
-            if isinstance(channel, discord.TextChannel):
-                if channel.name == str(title).lower():
-                    await channel.send(f'{ctx.author.mention} {task_content}')
-    
-
-    await db_service.insert_one_task(TaskIn(
-        title=title,
-        content=task_content,
-        deadline=deadline,
-        date_assigned=date.today().strftime('%d/%m/%Y'),
-        guild_id=str(ctx.guild.id),
-        role_id=role_id
-    ))
-    await ctx.send('Added task to database!')
 
 @bot.command()
-async def getTasks(ctx, role_name=None) -> None:
-    role: discord.Role = None
-    if role_name != None:
-        role = get_role_by_attribute('name', role_name, ctx.guild.roles)
-        if role == None:
-            await ctx.send(
-                """Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"""
-            )
-            return
-        elif role not in ctx.author.roles:
-            await ctx.send('Sorry, you are not authorized to make this command')
-            return
+async def addTaskToRole(ctx) -> None:
+    role: discord.Role = await input_role_from_user(
+        ctx=ctx,
+        bot=bot,
+        error_message="Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"
+    )
+    if not role:
+        return
+    if role not in ctx.author.roles:
+        await ctx.send('Sorry, you are not authorized to make this command')
+        return
+    await get_and_add_task(ctx, bot, role=role)
 
-    await ctx.send("Getting tasks...")
-    query = tasks.select().where(tasks.c.guild_id == '').where(tasks.c.role_id == '')
-    values = {
-        'guild_id_1': str(ctx.guild.id),
-        'role_id_1': ''
-    }
-    if role != None:
-        values['role_id_1'] = str(role.id)
-
-    mapped_tasks = await db_service.get_mapped_tasks(query=str(query), values=values)
-    await displayTasks(ctx=ctx, mapped_tasks=mapped_tasks)
 
 @bot.command()
-async def markComplete(ctx, role_name=None):
-    def check(message: discord.Message) -> bool:
-        if message.author != ctx.author:
-            return False
-        try:
-            serial_number = int(message.content)
-        except:
-            return False
-        
-        return True
-    
-    role: discord.Role = None
-    if role_name != None:
-        role = get_role_by_attribute('name', role_name, ctx.guild.roles)
-        if role == None:
-            await ctx.send(
-                """Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"""
-            )
-            return
-        elif role not in ctx.author.roles:
-            await ctx.send('Sorry, you are not authorized to make this command')
-            return
-
-    await ctx.send("Getting tasks...")
-    query = tasks.select().where(tasks.c.guild_id == '').where(tasks.c.role_id == '')
-    values = {
-        'guild_id_1': str(ctx.guild.id),
-        'role_id_1': ''
-    }
-    if role != None:
-        values['role_id_1'] = str(role.id)
-
-    mapped_tasks = await db_service.get_mapped_tasks(query=str(query), values=values)
-    no_tasks: bool = await displayTasks(ctx=ctx, mapped_tasks=mapped_tasks)
-    if no_tasks:
+async def getTasksByRole(ctx) -> None:
+    role: discord.Role = await input_role_from_user(
+        ctx=ctx,
+        bot=bot,
+        error_message="Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"
+    )
+    if not role:
+        return
+    if role not in ctx.author.roles:
+        await ctx.send('Sorry, you are not authorized to make this command')
         return
 
-    await ctx.send('Please enter the serial number of the task you would like to mark as complete')
-    serial_number_message: discord.Message = await bot.wait_for('message', check=check)
-    serial_number: int = int(serial_number_message.content)
+    await show_tasks_screen(ctx, role=role)
 
-    for task in mapped_tasks:
-        if str(task.task_id) == str(serial_number):
-            task_embed = create_task_embed(task)
-            await ctx.send(embed=task_embed)
-            await ctx.send('Removing this task...')
-            await db_service.delete_one_task(task)
-            await ctx.send('Done!')
-            return
+@bot.command()
+async def getTasks(ctx) -> None:
+    await show_tasks_screen(ctx, role=None)
     
-    await ctx.send(f"Sorry, doesn't look like there's a task with the id of {serial_number}")
+
+@bot.command()
+async def markCompleteByRole(ctx):
+    role: discord.Role = await input_role_from_user(
+        ctx=ctx,
+        bot=bot,
+        error_message="Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"
+    )
+
+    await show_task_completion_screen(ctx, bot, role=role)
+
+
+@bot.command()
+async def markComplete(ctx) -> None:
+    await show_task_completion_screen(ctx, bot, role=None)
 
 
 @bot.command()
@@ -173,7 +88,6 @@ async def countMessage(ctx, messages=None) -> None:
     channel: discord.TextChannel = bot.get_channel(int(channel_id))
 
     async for message in channel.history(limit=None):
-        print(message.content, message.author)
         if messages_to_count != []:
             if message.content.lower() in [string.lower() for string in messages_to_count]:
                 if str(message.author.name) in counts.keys():
@@ -191,7 +105,7 @@ async def countMessage(ctx, messages=None) -> None:
         type='rich',
         title='Message Count'
     )
-    message_count_embed.description = f'Total: {sum_dict_values(counts)}\n'
+    message_count_embed.description = f'Total: {sum(counts.values())}\n'
     for member_name in counts.keys():
         message_count_embed.description += f'{member_name}: {counts.get(member_name)}\n'
     
@@ -209,6 +123,7 @@ async def setStatus(ctx, new_status: str) -> None:
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
+
 
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
@@ -235,7 +150,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         await member.remove_roles(before_role)
         await member.add_roles(after_role)
 
-token: str = str(os.getenv('DISCORD_TOKEN'))
+token = str(os.getenv('DISCORD_TOKEN'))
 bot.run(token)
 
 
