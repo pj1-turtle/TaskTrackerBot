@@ -13,4 +13,3 @@ tasks = sqlalchemy.Table(
     sqlalchemy.Column("guild_id", sqlalchemy.String(length=50), nullable=False),
     sqlalchemy.Column("role_id", sqlalchemy.String(length=50), nullable=False)
 )
-

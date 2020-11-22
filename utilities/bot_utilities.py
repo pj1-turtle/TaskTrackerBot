@@ -1,14 +1,13 @@
 from typing import List
-
 from .general_utilities import remove_all
 from datetime import date
 import os
 import sys
 
 sys.path.append('../')
+import db_service
 from models.task import TaskIn, TaskOut
 import db_service
-from schemas import tasks
 
 import discord
 
@@ -119,7 +118,7 @@ async def input_role_from_user(ctx, bot, error_message: str) -> discord.Role:
     return role 
 
 
-async def show_task_completion_screen(ctx, bot, role=None) -> None:
+async def task_completion_screen(ctx, bot, role=None) -> None:
     def check(message: discord.Message) -> bool:
         if message.author != ctx.author:
             return False
@@ -130,7 +129,8 @@ async def show_task_completion_screen(ctx, bot, role=None) -> None:
         
         return True
     
-    mapped_tasks = await show_tasks_screen(ctx, role=role)
+    mapped_tasks = await db_service.get_guild_tasks(ctx.guild, role=role)
+    await displayTasks(ctx, mapped_tasks)
     if len(mapped_tasks) == 0:
         return
 
@@ -146,21 +146,6 @@ async def show_task_completion_screen(ctx, bot, role=None) -> None:
             await db_service.delete_one_task(task)
             await ctx.send('Done!')
             return
-
-
-async def show_tasks_screen(ctx, role=None) -> List[TaskOut]:
-    await ctx.send("Getting tasks...")
-    query = tasks.select().where(tasks.c.guild_id == '').where(tasks.c.role_id == '')
-    values = {
-        'guild_id_1': str(ctx.guild.id),
-        'role_id_1': ''
-    }
-    if role != None:
-        values['role_id_1'] = str(role.id)
-    
-    mapped_tasks = await db_service.get_mapped_tasks(query=str(query), values=values)
-    await displayTasks(ctx, mapped_tasks)
-    return mapped_tasks
 
 
 

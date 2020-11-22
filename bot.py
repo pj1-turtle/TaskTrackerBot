@@ -1,17 +1,20 @@
+from dotenv import load_dotenv
+
+DEBUG = True
+if DEBUG:
+    load_dotenv()
+
+
+from typing import List
 import db_service
 from utilities.general_utilities import remove_all, sort_dict_by_value
-from utilities.bot_utilities import create_task_embed, get_and_add_task, get_task_from_user, input_role_from_user, post_to_secret_server, get_role_by_attribute, get_role_from_mention, show_task_completion_screen, show_tasks_screen
+from utilities.bot_utilities import displayTasks, get_and_add_task, input_role_from_user, get_role_by_attribute, get_role_from_mention, task_completion_screen
 from schemas import tasks
 import os
 from datetime import date
 
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
-
-DEBUG = True
-if DEBUG:
-    load_dotenv()
 
 bot = commands.Bot(command_prefix='-')
 
@@ -48,11 +51,14 @@ async def getTasksByRole(ctx) -> None:
         await ctx.send('Sorry, you are not authorized to make this command')
         return
 
-    await show_tasks_screen(ctx, role=role)
+    await ctx.send("Getting tasks...")
+    mapped_tasks = await db_service.get_guild_tasks(ctx.guild, role=role)
+    await displayTasks(ctx, mapped_tasks)
 
 @bot.command()
 async def getTasks(ctx) -> None:
-    await show_tasks_screen(ctx, role=None)
+    mapped_tasks = await db_service.get_guild_tasks(ctx.guild, role=None)
+    await displayTasks(ctx, mapped_tasks)
     
 
 @bot.command()
@@ -63,12 +69,12 @@ async def markCompleteByRole(ctx):
         error_message="Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"
     )
 
-    await show_task_completion_screen(ctx, bot, role=role)
+    await task_completion_screen(ctx, bot, role=role)
 
 
 @bot.command()
 async def markComplete(ctx) -> None:
-    await show_task_completion_screen(ctx, bot, role=None)
+    await task_completion_screen(ctx, bot, role=None)
 
 
 @bot.command()
@@ -111,6 +117,30 @@ async def countMessage(ctx, messages=None) -> None:
     
     await ctx.send(embed=message_count_embed)
 
+@bot.command()
+async def purgeRole(ctx) -> None:
+    
+    def check(message: discord.Message) -> bool:
+        if message.author != ctx.author:
+            return False
+        return True
+    role: discord.Role = await input_role_from_user(
+        ctx=ctx,
+        bot=bot,
+        error_message="Sorry, there doesn't seem to be a role with this name. Please do not mention the role and make sure to provide the role name"
+    )
+
+    for member in ctx.guild.members:
+        print(member)
+        print(f'Removing {role.name} from {member.name}...')
+        if role in member.roles:
+            await member.remove_roles([role], reason=f'purgeRole command issued by {ctx.author.name}')
+
+@bot.command()
+async def pingVC(ctx):
+    vc_role: discord.Role = get_role_by_attribute('name', ctx.author.voice.channel.name, ctx.guild.roles)
+    await ctx.send(vc_role.mention)
+
 
 @bot.command()
 async def setStatus(ctx, new_status: str) -> None:
@@ -149,6 +179,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
             after_role = await guild.create_role(name=after.channel.name)
         await member.remove_roles(before_role)
         await member.add_roles(after_role)
+
 
 token = str(os.getenv('DISCORD_TOKEN'))
 bot.run(token)
