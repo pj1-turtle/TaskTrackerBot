@@ -144,7 +144,7 @@ async def pingVC(ctx):
 
 @bot.command()
 async def setStatus(ctx, new_status: str) -> None:
-    possible_statuses = ['dnd', 'online', 'idle', 'invisible']
+    possible_statuses = ['dnd', 'online', 'idle']
     if new_status in possible_statuses:
         await bot.change_presence(status=new_status)
     return
