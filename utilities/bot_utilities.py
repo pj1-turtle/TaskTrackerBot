@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from .general_utilities import remove_all
 from datetime import date
 import os
@@ -21,13 +21,15 @@ def get_role_by_attribute(attribute_name, role_attribute, roles: List[discord.Ro
             return role
     return None
 
-def create_task_embed(task: TaskOut) -> discord.Embed:
+def create_task_embed(task: Union[TaskIn, TaskOut]) -> discord.Embed:
     task_embed = discord.Embed(
         type="rich",
         title=task.title
     )
     task_embed.color = discord.Colour(0x3fce8)
-    task_embed.description = f'Task Id: {task.task_id}\n'
+    task_embed.description = ''
+    if hasattr(task, 'task_id'):
+        task_embed.description += f'Task Id: {task.task_id}\n'
     task_embed.description += f'Task content: {task.content}\n'
     task_embed.description += f'Deadline: {task.deadline}\n'
     task_embed.description += f'Date assigned: {task.date_assigned}'
@@ -90,7 +92,8 @@ async def post_to_secret_server(ctx, input_task: TaskIn) -> None:
         for channel in ctx.guild.channels:
             if isinstance(channel, discord.TextChannel):
                 if channel.name == str(input_task.title).lower():
-                    await channel.send(f'{ctx.author.mention} {input_task.content}')
+                    await channel.send(f'{ctx.author.mention}')
+                    await channel.send(embed=create_task_embed(input_task))
 
 
 async def get_and_add_task(ctx, bot, role: discord.Role=None) -> None:
